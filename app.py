@@ -326,22 +326,47 @@ def add_like(msg_id):
     return redirect("/")
 
 
-# @app.route("/users/<int:user_id>/likes")
+@app.route("/users/<int:user_id>/likes")
+def show_liked_posts(user_id):
+
+    user = User.query.get_or_404(user_id)
+    likes = [like.message_id for like in Likes.query.filter_by(user_id=g.user.id).all()]
+
+    return render_template(
+        "/messages/liked_messages.html", messages=user.likes, likes=likes, user=user
+    )
+
+
+# @app.route("/users/<int:user_id>/likes", ["POST"])
 # def show_liked_posts(user_id):
-#     likes = [like.message_id for like in Likes.query.filter(user_id == user_id).all()]
-#     # likes = [like for like in Likes.query.filter_by(user_id=user_id).all()]
+
+#     user = User.query.get(user_id)
+
+#     likes = [like.message_id for like in Likes.query.filter_by(user_id=user_id).all()]
+
+#     return render_template(
+#         "/messages/liked_messages.html", messages=user.likes, likes=likes
+#     )
 
 
-#     if msg_id in likes:
-#         like = Likes.query.filter_by(message_id=msg_id).first()
-#         db.session.delete(like)
-#         db.session.commit()
-#         return redirect("/")
-#     message = Message.query.get(msg_id)
-#     new_like = Likes(user_id=message.user_id, message_id=msg_id)
-#     db.session.add(new_like)
-#     db.session.commit()
-#     return redirect("/")
+@app.route("/users/add_like_v2/<int:msg_id>", methods=["POST"])
+def add_like_v2(msg_id):
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect(f"/users/{g.user.id}/likes")
+
+    liked_message = Message.query.get_or_404(msg_id)
+    if liked_message.user_id == g.user.id:
+        return abort(403)
+
+    user_likes = g.user.likes
+
+    if liked_message in user_likes:
+        g.user.likes = [like for like in user_likes if like != liked_message]
+    else:
+        g.user.likes.append(liked_message)
+    db.session.commit()
+    return redirect(f"/users/{g.user.id}/likes")
 
 
 ##############################################################################
